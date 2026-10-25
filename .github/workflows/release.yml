@@ -1,0 +1,131 @@
+name: release
+
+# Push a tag like v0.2.0 (see scripts/bump_version.py) to build, sign and publish.
+# The release starts as a draft; each platform uploads its installer and updater
+# bundle to it. Only when all three are in is latest.json rebuilt and the release
+# published, so releases/latest/download/latest.json (what the app's updater
+# reads) never points at a release missing the user's system.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - working-directory: src-tauri
+        run: cargo test --lib
+
+  create-release:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      id: ${{ steps.draft.outputs.id }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      # The id comes straight from the create call; listing releases right after
+      # creating one can miss it, which silently disabled every upload.
+      - id: draft
+        run: |
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" -f tag_name="$TAG" -f name="AIMeetings $TAG" \
+            -F draft=true -f body="Descarga el instalador para tu sistema. Si ya tienes AIMeetings, se actualizará solo desde la app." \
+            --jq .id)
+          [ -n "$id" ] || exit 1
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            arch: x64
+          - os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.target }}
+      - run: pnpm install --frozen-lockfile
+
+      # The llama.cpp engine for this platform, pinned and checksum-verified.
+      - name: Fetch llama.cpp server
+        run: pnpm llama:runtime
+
+      - name: Visual C++ runtime beside the engines
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/copy-vc-runtime.ps1 -Arch ${{ matrix.arch }}
+
+      - name: Build, sign and publish
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Updater signature (ed25519), not OS code signing.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          args: --target ${{ matrix.target }}
+          releaseId: ${{ needs.create-release.outputs.id }}
+          includeUpdaterJson: true
+
+  publish-release:
+    needs: [create-release, publish]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ github.ref_name }}
+      ID: ${{ needs.create-release.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+      # A draft can't be looked up by tag, so everything goes through its id.
+      - name: Rebuild latest.json from the signed bundles
+        run: |
+          mkdir sigs
+          gh api "repos/$GITHUB_REPOSITORY/releases/$ID/assets" --paginate \
+            --jq '.[] | select(.name | endswith(".sig")) | "\(.id) \(.name)"' |
+          while read -r aid name; do
+            gh api -H "Accept: application/octet-stream" "repos/$GITHUB_REPOSITORY/releases/assets/$aid" > "sigs/$name"
+          done
+          ls sigs
+          python3 scripts/updater_manifest.py "$TAG" "$GITHUB_REPOSITORY" sigs
+          old=$(gh api "repos/$GITHUB_REPOSITORY/releases/$ID/assets" --paginate --jq '.[] | select(.name == "latest.json") | .id')
+          [ -z "$old" ] || gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$old"
+          gh api -X POST -H "Content-Type: application/json" --input latest.json \
+            "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$ID/assets?name=latest.json" > /dev/null
+      - name: Publish
+        run: gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$ID" -F draft=false -f make_latest=true > /dev/null

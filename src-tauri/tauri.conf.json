@@ -1,0 +1,68 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "AIMeetings",
+  "version": "../package.json",
+  "identifier": "com.aimeetings.app",
+  "build": {
+    "beforeDevCommand": "pnpm llama:runtime:dev && pnpm dev",
+    "devUrl": "http://localhost:1430",
+    "beforeBuildCommand": "pnpm build && pnpm llama:runtime",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "AIMeetings",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 880,
+        "minHeight": 600,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "resources": {
+      "resources/llama/": "llama/"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "entitlements": "Entitlements.plist",
+      "minimumSystemVersion": "13.0"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
+    "createUpdaterArtifacts": true,
+    "category": "Productivity",
+    "shortDescription": "Record, transcribe and summarize classes and meetings"
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDAyMkY4NEZFQUVFMEYyOUUKUldTZTh1Q3Uvb1F2QWw0eG9NOENPYlJ5UGN4eGRuaGhzODJRR2haSDhKRzcrbmhjTFlKMUNaK1AK",
+      "endpoints": [
+        "https://github.com/sorodriguezz/AIMeetings/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

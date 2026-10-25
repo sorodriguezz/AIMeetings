@@ -1,0 +1,343 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --font-sans: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* «Cuaderno»: a warm paper frame (`--cf-bg`: the sidebar) holding a white page (`--cf-surface`),
+   written in ink with one calm teal accent. Everything derived — hovers, sunken tones, soft
+   accents — is mixed from the few literals below, so the dark theme only restates those. */
+:root {
+  color-scheme: light;
+  --cf-bg: #f5f2ec;
+  --cf-surface: #ffffff;
+  --cf-surface-raised: #ffffff;
+  --cf-border: #e8e3d9;
+  --cf-text: #22201c;
+  --cf-text-muted: #6d675d;
+  --cf-accent: #0e8a73;
+  --cf-on-accent: #ffffff;
+  --cf-success: #2f855a;
+  --cf-danger: #d64545;
+  --cf-warning: #b7791f;
+  --cf-blue: #2b6cb0;
+  --cf-field: #ffffff;
+  --cf-field-border: #ddd7cb;
+  --cf-shadow: 0 1px 2px rgba(60, 45, 20, 0.05), 0 12px 32px -10px rgba(60, 45, 20, 0.18);
+  --cf-shadow-modal: 0 30px 80px -20px rgba(60, 45, 20, 0.32);
+  --cf-shadow-lift: 0 1px 3px rgba(60, 45, 20, 0.07);
+  --cf-record: #e5484d;
+
+  --cf-surface-2: color-mix(in oklab, var(--cf-text) 2.5%, var(--cf-surface));
+  --cf-sunken: color-mix(in oklab, var(--cf-text) 4%, var(--cf-surface));
+  --cf-hover: color-mix(in oklab, var(--cf-text) 5%, transparent);
+  --cf-border-strong: color-mix(in oklab, var(--cf-text) 18%, var(--cf-surface));
+  --cf-text-faint: color-mix(in oklab, var(--cf-text-muted) 70%, var(--cf-surface));
+  --cf-accent-soft: color-mix(in oklab, var(--cf-accent) 12%, var(--cf-surface));
+  --cf-accent-line: color-mix(in oklab, var(--cf-accent) 40%, var(--cf-surface));
+  --cf-accent-fill: var(--cf-accent);
+  --cf-danger-fill: var(--cf-danger);
+  --cf-control: var(--cf-surface);
+}
+
+/* The dark theme, twice: when the system asks and nothing overrides it, and when chosen. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --cf-bg: #141311;
+    --cf-surface: #1c1b18;
+    --cf-surface-raised: #23221e;
+    --cf-border: #2f2d28;
+    --cf-text: #efebe3;
+    --cf-text-muted: #a9a296;
+    --cf-accent: #3fc6a7;
+    --cf-on-accent: #0e1412;
+    --cf-success: #68d391;
+    --cf-danger: #fc8181;
+    --cf-warning: #f6c453;
+    --cf-blue: #63b3ed;
+    --cf-field: #171613;
+    --cf-field-border: #3a3832;
+    --cf-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 30px -8px rgba(0, 0, 0, 0.55);
+    --cf-shadow-modal: 0 30px 80px -16px rgba(0, 0, 0, 0.7);
+    --cf-shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.4);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --cf-bg: #141311;
+  --cf-surface: #1c1b18;
+  --cf-surface-raised: #23221e;
+  --cf-border: #2f2d28;
+  --cf-text: #efebe3;
+  --cf-text-muted: #a9a296;
+  --cf-accent: #3fc6a7;
+  --cf-on-accent: #0e1412;
+  --cf-success: #68d391;
+  --cf-danger: #fc8181;
+  --cf-warning: #f6c453;
+  --cf-blue: #63b3ed;
+  --cf-field: #171613;
+  --cf-field-border: #3a3832;
+  --cf-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 30px -8px rgba(0, 0, 0, 0.55);
+  --cf-shadow-modal: 0 30px 80px -16px rgba(0, 0, 0, 0.7);
+  --cf-shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--cf-bg);
+  color: var(--cf-text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input,
+textarea,
+[contenteditable],
+.cf-selectable {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+button {
+  cursor: default;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--cf-accent) 28%, transparent);
+}
+
+/* Thin, quiet scrollbars that only show where there is something to scroll. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--cf-text) 18%, transparent) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--cf-text) 16%, transparent);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--cf-accent-line);
+  outline-offset: 1px;
+}
+
+.cf-press:active {
+  transform: translateY(0.5px);
+}
+
+.cf-kbd {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid var(--cf-border);
+  color: var(--cf-text-muted);
+}
+
+/* The strip macOS draws its traffic lights over: it drags the window. */
+.cf-drag {
+  -webkit-app-region: drag;
+}
+
+@keyframes cf-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.cf-skeleton {
+  background: linear-gradient(90deg, var(--cf-border) 25%, color-mix(in oklab, var(--cf-border) 50%, var(--cf-surface)) 50%, var(--cf-border) 75%);
+  background-size: 200% 100%;
+  animation: cf-shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+@keyframes cf-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.cf-fade-in {
+  animation: cf-fade-in 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes cf-tip-in {
+  from {
+    opacity: 0;
+    transform: translate(var(--cf-tip-x, 0), var(--cf-tip-y, 0)) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+.cf-tip {
+  animation: cf-tip-in 0.12s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center;
+  box-shadow: var(--cf-shadow), 0 0 0 1px color-mix(in oklab, var(--cf-text) 9%, transparent);
+}
+
+@keyframes cf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.cf-spin {
+  animation: cf-spin 0.9s linear infinite;
+}
+
+@keyframes cf-pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--cf-record) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+.cf-rec-dot {
+  animation: cf-pulse-ring 1.6s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-tip,
+  .cf-fade-in,
+  .cf-rec-dot,
+  .cf-skeleton {
+    animation: none;
+  }
+}
+
+/* Markdown written by the AI and the meeting's notes preview. */
+.cf-markdown {
+  line-height: 1.6;
+  font-size: 13px;
+  color: var(--cf-text);
+  user-select: text;
+  -webkit-user-select: text;
+}
+.cf-markdown > :first-child {
+  margin-top: 0;
+}
+.cf-markdown h1,
+.cf-markdown h2,
+.cf-markdown h3 {
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 1.2em 0 0.45em;
+}
+.cf-markdown h1 {
+  font-size: 1.35em;
+}
+.cf-markdown h2 {
+  font-size: 1.15em;
+}
+.cf-markdown h3 {
+  font-size: 1.02em;
+}
+.cf-markdown p {
+  margin: 0.5em 0;
+}
+.cf-markdown ul,
+.cf-markdown ol {
+  margin: 0.4em 0;
+  padding-left: 1.4em;
+}
+.cf-markdown ul {
+  list-style: disc;
+}
+.cf-markdown ol {
+  list-style: decimal;
+}
+.cf-markdown li {
+  margin: 0.15em 0;
+}
+.cf-markdown li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-left: -1.3em;
+}
+.cf-markdown input[type="checkbox"] {
+  margin-right: 0.45em;
+  accent-color: var(--cf-accent);
+}
+.cf-markdown a {
+  color: var(--cf-accent);
+  text-decoration: none;
+}
+.cf-markdown a:hover {
+  text-decoration: underline;
+}
+.cf-markdown code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--cf-sunken);
+}
+.cf-markdown pre {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--cf-sunken);
+  overflow-x: auto;
+}
+.cf-markdown pre code {
+  padding: 0;
+  background: none;
+}
+.cf-markdown blockquote {
+  margin: 0.6em 0;
+  padding-left: 0.9em;
+  border-left: 3px solid var(--cf-border-strong);
+  color: var(--cf-text-muted);
+}
+.cf-markdown table {
+  border-collapse: collapse;
+  margin: 0.6em 0;
+  font-size: 0.95em;
+}
+.cf-markdown th,
+.cf-markdown td {
+  border: 1px solid var(--cf-border);
+  padding: 4px 8px;
+  text-align: left;
+}
+.cf-markdown th {
+  background: var(--cf-surface-2);
+  font-weight: 600;
+}
+.cf-markdown hr {
+  border: none;
+  border-top: 1px solid var(--cf-border);
+  margin: 1em 0;
+}

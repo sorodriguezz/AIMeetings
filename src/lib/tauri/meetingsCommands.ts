@@ -1,0 +1,281 @@
+import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { DictationModel } from "./dictationCommands";
+
+/** `db::meeting_queries::MeetingRow`. */
+export interface Meeting {
+  id: string;
+  /** `""` = the library's root. */
+  folderId: string;
+  title: string;
+  notesMd: string;
+  /** Local-only by itself (its folder may make it so too — see `MeetingDetail.localOnly`). */
+  localOnly: boolean;
+  /** `virtual` (microphone + the computer's audio) · `room` (microphone only) · `import`. */
+  kind: "virtual" | "room" | "import";
+  mode: MeetingMode;
+  transcriber: "local" | "cloud";
+  language: string;
+  status: MeetingStatus;
+  stage: string;
+  error: string;
+  startedAt: string;
+  endedAt: string;
+  durationMs: number;
+  /** JSON array: `["mic","system"]`. */
+  channels: string;
+  audioFile: string;
+  audioBytes: number;
+  audioExpiresAt: string;
+  speakersHint: number;
+  liveComplete: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type MeetingMode = "light" | "balanced" | "full";
+/** `recorded`: stopped and stored, waiting for the user to transcribe it («Transcribir»). */
+export type MeetingStatus = "recording" | "paused" | "queued" | "processing" | "ready" | "failed" | "interrupted" | "recorded";
+
+/** `LineRow`: one line of the transcript. `speaker` is a key: `me`, `others`, `p0`, `p1`… */
+export interface MeetingLine {
+  seq: number;
+  channel: "mic" | "system";
+  speaker: string;
+  startMs: number;
+  endMs: number;
+  text: string;
+  pass: "live" | "final";
+  edited: boolean;
+}
+
+/** `SpeakerRow`. */
+export interface MeetingSpeaker {
+  key: string;
+  name: string;
+  color: number;
+  isMe: boolean;
+  voiceId: string;
+  talkMs: number;
+  /** A voice can be saved from it. */
+  hasVoice: boolean;
+}
+
+export interface MeetingDetail {
+  meeting: Meeting;
+  lines: MeetingLine[];
+  speakers: MeetingSpeaker[];
+  localOnly: boolean;
+}
+
+export interface MeetingRecipe {
+  id: string;
+  name: string;
+  prompt: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Voice {
+  id: string;
+  name: string;
+  isMe: boolean;
+  samples: number;
+  model: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** `meetings_status`. */
+export interface MeetingsStatus {
+  supported: boolean;
+  engineInstalled: boolean;
+  /** Something finds the speech: whisper.cpp, or sherpa-onnx with Parakeet. */
+  canRecord: boolean;
+  vadInstalled: boolean;
+  voicesInstalled: boolean;
+  voicesSupported: boolean;
+  voicesBytes: number;
+  models: DictationModel[];
+  recording: { meetingId: string; elapsedMs: number; paused: boolean; behind: boolean } | null;
+  processing: string | null;
+  queued: string[];
+  cloudKey: boolean;
+  /** Where the recordings are kept on this computer. */
+  recordingsDir: string;
+}
+
+export interface MeetingBench {
+  measuredAt: string;
+  threads: number;
+  perUtteranceMs: [string, number][];
+  recommended: MeetingMode;
+  liveModel: string;
+}
+
+/** What the engine is told about the meeting above its transcript. */
+export interface MeetingFacts {
+  title: string;
+  date: string;
+  duration: string;
+  participants: string[];
+  language: string;
+}
+
+export const MIC_DENIED = "MIC_DENIED";
+export const SYSTEM_AUDIO_DENIED = "SYSTEM_AUDIO_DENIED";
+export const NO_MODEL = "MEETINGS_NO_MODEL";
+export const NO_CLOUD_KEY = "MEETINGS_NO_CLOUD_KEY";
+export const LOCAL_UNAVAILABLE = "MEETINGS_LOCAL_UNAVAILABLE";
+
+export const meetingsStatus = () => invoke<MeetingsStatus>("meetings_status");
+export const meetingsInstall = (item: "vad" | "voices") => invoke<void>("meetings_install", { item });
+export const meetingsCancelInstall = () => invoke<void>("meetings_cancel_install");
+export const meetingsRemoveVoices = () => invoke<void>("meetings_remove_voices");
+export const meetingsSetCloudKey = (key: string) => invoke<void>("meetings_set_cloud_key", { key });
+export const meetingsTestCloud = () => invoke<void>("meetings_test_cloud");
+export const meetingsBench = () => invoke<MeetingBench>("meetings_bench");
+export const meetingsSystemAudioSettings = () => invoke<void>("meetings_system_audio_settings");
+export const meetingsRevealRecordings = () => invoke<void>("meetings_reveal_recordings");
+
+export const meetingsStart = (args: { folderId?: string; title?: string; kind: "virtual" | "room"; mode?: MeetingMode; language: string }) =>
+  invoke<{ meeting: Meeting; warning: string | null; mode: MeetingMode }>("meetings_start", args);
+/** The meters before a meeting starts: the microphone, and with `system` the computer's audio too. */
+export const meetingsMonitor = (on: boolean, system = false) => invoke<void>("meetings_monitor", { on, system });
+/** Silences the microphone in this app only — the device and other apps keep hearing it. */
+export const meetingsSetMicMuted = (muted: boolean) => invoke<void>("meetings_set_mic_muted", { muted });
+export const meetingsSetMicGain = (gain: number) => invoke<void>("meetings_set_mic_gain", { gain });
+export const meetingsPause = (meetingId: string, paused: boolean) => invoke<void>("meetings_pause", { meetingId, paused });
+/** `transcribe` overrides the «Al detener» setting for this recording; omitted, the setting decides. */
+export const meetingsStop = (meetingId: string, transcribe?: boolean) => invoke<Meeting>("meetings_stop", { meetingId, transcribe });
+/** Transcribes a recording that was kept for later. */
+export const meetingsTranscribe = (meetingId: string) => invoke<void>("meetings_transcribe", { meetingId });
+export const meetingsDiscard = (meetingId: string) => invoke<void>("meetings_discard", { meetingId });
+export const meetingsDelete = (meetingId: string) => invoke<void>("meetings_delete", { meetingId });
+export const meetingsCancelJob = (meetingId: string) => invoke<void>("meetings_cancel_job", { meetingId });
+export const meetingsReprocess = (meetingId: string, retranscribe: boolean, speakers: number, cloud?: boolean) =>
+  invoke<void>("meetings_reprocess", { meetingId, retranscribe, speakers, cloud });
+export const meetingsImport = (folderId: string, path: string, language: string) => invoke<Meeting>("meetings_import", { folderId, path, language });
+
+/** `folder`: `undefined` every meeting, `""` the root's, an id that folder's. */
+export const meetingsList = (folder?: string, query?: string) => invoke<Meeting[]>("meetings_list", { folder, query });
+export interface LineHit {
+  meetingId: string;
+  startMs: number;
+  text: string;
+}
+export const meetingsSearchLines = (query: string) => invoke<LineHit[]>("meetings_search_lines", { query });
+export const meetingsSetTitle = (meetingId: string, title: string) => invoke<void>("meetings_set_title", { meetingId, title });
+export const meetingsSetNotes = (meetingId: string, notes: string) => invoke<void>("meetings_set_notes", { meetingId, notes });
+export const meetingsAppendNotes = (meetingId: string, block: string) => invoke<string>("meetings_append_notes", { meetingId, block });
+export const meetingsMove = (meetingId: string, folderId: string) => invoke<void>("meetings_move", { meetingId, folderId });
+export const meetingsSetLocalOnly = (meetingId: string, localOnly: boolean) => invoke<void>("meetings_set_local_only", { meetingId, localOnly });
+
+/** `FolderRow`. */
+export interface Folder {
+  id: string;
+  /** `""` = at the top. */
+  parentId: string;
+  name: string;
+  localOnly: boolean;
+  sortOrder: number;
+  count: number;
+}
+export const foldersList = () => invoke<Folder[]>("folders_list");
+export const foldersCreate = (name: string, parentId?: string) => invoke<string>("folders_create", { name, parentId });
+export const foldersRename = (id: string, name: string) => invoke<void>("folders_rename", { id, name });
+export const foldersDelete = (id: string) => invoke<void>("folders_delete", { id });
+export const foldersSetLocalOnly = (id: string, localOnly: boolean) => invoke<void>("folders_set_local_only", { id, localOnly });
+export const meetingsDetail = (meetingId: string) => invoke<MeetingDetail>("meetings_detail", { meetingId });
+export const meetingsAudio = (meetingId: string) => invoke<ArrayBuffer>("meetings_audio", { meetingId });
+export const meetingsPeaks = (meetingId: string) => invoke<Record<string, number[]>>("meetings_peaks", { meetingId });
+export const meetingsExportAudio = (meetingId: string, path: string) => invoke<void>("meetings_export_audio", { meetingId, path });
+/** Deletes the meeting's audio now; the transcript, speakers and note stay. */
+export const meetingsDeleteAudio = (meetingId: string) => invoke<void>("meetings_delete_audio", { meetingId });
+
+export const meetingsUpdateLine = (meetingId: string, seq: number, text: string) => invoke<void>("meetings_update_line", { meetingId, seq, text });
+export const meetingsSetLineSpeaker = (meetingId: string, seq: number, speaker: string) =>
+  invoke<void>("meetings_set_line_speaker", { meetingId, seq, speaker });
+export const meetingsRenameSpeaker = (meetingId: string, key: string, name: string) => invoke<void>("meetings_rename_speaker", { meetingId, key, name });
+export const meetingsMergeSpeakers = (meetingId: string, from: string, into: string) => invoke<void>("meetings_merge_speakers", { meetingId, from, into });
+export const meetingsAddSpeaker = (meetingId: string) => invoke<string>("meetings_add_speaker", { meetingId });
+
+export const meetingsVoices = () => invoke<Voice[]>("meetings_voices");
+export const meetingsSaveVoice = (args: { meetingId: string; key: string; name: string; isMe: boolean; voiceId?: string }) =>
+  invoke<Voice>("meetings_save_voice", args);
+export const meetingsRenameVoice = (voiceId: string, name: string) => invoke<void>("meetings_rename_voice", { voiceId, name });
+export const meetingsDeleteVoice = (voiceId: string) => invoke<void>("meetings_delete_voice", { voiceId });
+
+export const meetingsRecipes = () => invoke<MeetingRecipe[]>("meetings_recipes");
+export const meetingsSaveRecipe = (id: string | null, name: string, prompt: string) => invoke<MeetingRecipe>("meetings_save_recipe", { id, name, prompt });
+export const meetingsDeleteRecipe = (id: string) => invoke<void>("meetings_delete_recipe", { id });
+
+export const meetingsAi = (request: {
+  meetingId: string;
+  recipe?: string;
+  instruction?: string;
+  question: boolean;
+  facts: MeetingFacts;
+  names: Record<string, string>;
+  runId?: string;
+  /** A provider for this call only. */
+  provider?: string;
+}) => invoke<{ markdown: string; engine: string }>("meetings_ai", { request });
+
+// ---- events -------------------------------------------------------------------------------
+
+export interface LevelEvent {
+  meetingId: string;
+  channel: "mic" | "system";
+  level: number;
+  /** The loudest sample of the block, 1 = clipping. */
+  peak: number;
+}
+/** The microphone meter before a meeting starts: a level, or why the microphone did not open. */
+export interface MonitorEvent {
+  channel: "mic" | "system";
+  level: number;
+  peak: number;
+  error: string | null;
+}
+export interface LineEvent {
+  meetingId: string;
+  line: MeetingLine;
+}
+export interface StateEvent {
+  meetingId: string;
+  folderId: string;
+  status: MeetingStatus | "deleted";
+  stage: string;
+  error: string;
+}
+export interface ProgressEvent {
+  meetingId: string;
+  stage: "detect" | "transcribe" | "voices" | "finish" | "decode" | "compress";
+  fraction: number;
+}
+export interface LagEvent {
+  meetingId: string;
+  lagMs: number;
+  behind: boolean;
+}
+export interface DownloadEvent {
+  item: "vad" | "voices";
+  phase: "downloading" | "unpacking" | "done" | "failed" | "cancelled";
+  done: number;
+  total: number;
+  error?: string;
+}
+export interface DetectedEvent {
+  caller: { id: string; name: string };
+}
+
+export const onMeetingLevel = (f: (e: LevelEvent) => void): Promise<UnlistenFn> => listen<LevelEvent>("meetings:level", (e) => f(e.payload));
+export const onMeetingMonitor = (f: (e: MonitorEvent) => void): Promise<UnlistenFn> => listen<MonitorEvent>("meetings:monitor", (e) => f(e.payload));
+export const onMeetingLine = (f: (e: LineEvent) => void): Promise<UnlistenFn> => listen<LineEvent>("meetings:line", (e) => f(e.payload));
+export const onMeetingState = (f: (e: StateEvent) => void): Promise<UnlistenFn> => listen<StateEvent>("meetings:state", (e) => f(e.payload));
+export const onMeetingProgress = (f: (e: ProgressEvent) => void): Promise<UnlistenFn> => listen<ProgressEvent>("meetings:progress", (e) => f(e.payload));
+export const onMeetingLag = (f: (e: LagEvent) => void): Promise<UnlistenFn> => listen<LagEvent>("meetings:lag", (e) => f(e.payload));
+export const onMeetingDownload = (f: (e: DownloadEvent) => void): Promise<UnlistenFn> => listen<DownloadEvent>("meetings:download", (e) => f(e.payload));
+export const onMeetingDetected = (f: (e: DetectedEvent) => void): Promise<UnlistenFn> => listen<DetectedEvent>("meetings:detected", (e) => f(e.payload));

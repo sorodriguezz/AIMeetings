@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Merged into the bundle's Info.plist.
+
+  NSMicrophoneUsageDescription: meetings read the microphone natively (cpal, AVCaptureDevice).
+  Without it macOS refuses the capture outright. The signed bundle must also claim
+  com.apple.security.device.audio-input (Entitlements.plist).
+
+  NSAudioCaptureUsageDescription: a call's other side is recorded through a Core Audio process tap
+  (macOS 14.6+). macOS asks for "System Audio Recording" the first time; without the key the tap
+  delivers silence.
+-->
+<plist version="1.0">
+  <dict>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>AIMeetings uses the microphone while you record a meeting. The audio is transcribed on this computer.</string>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>AIMeetings records the computer's audio only while you record a call, so the other participants are transcribed too.</string>
+  </dict>
+</plist>

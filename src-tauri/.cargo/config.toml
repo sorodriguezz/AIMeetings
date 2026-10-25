@@ -1,0 +1,7 @@
+# The app's own executable carries the C runtime instead of depending on the Visual C++
+# redistributable being installed — which a fresh Windows on ARM machine often lacks.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.aarch64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

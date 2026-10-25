@@ -1,0 +1,86 @@
+[package]
+name = "aimeetings"
+version = "0.1.0"
+description = "AIMeetings — record, transcribe and analyze meetings on your own computer"
+authors = ["sorodriguezz"]
+edition = "2021"
+publish = false
+
+[lib]
+name = "aimeetings_lib"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-os = "2"
+tauri-plugin-process = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-updater = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+keyring = "3"
+sysinfo = { version = "0.39", default-features = false, features = ["system", "disk"] }
+tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
+futures-util = "0.3"
+thiserror = "2"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+dirs = "5"
+dunce = "1"
+open = "5"
+regex = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "multipart", "stream"] }
+sha2 = "0.10"
+hex = "0.4"
+base64 = "0.22"
+bytes = "1"
+# whisper.cpp and sherpa-onnx (with ONNX Runtime) are downloaded on demand and loaded at run time.
+libloading = "0.7"
+tar = "0.4"
+zip = { version = "9", default-features = false, features = ["deflate"] }
+rand = "0.9"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+windows = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Dxgi",
+  "Win32_Media_MediaFoundation",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Variant",
+] }
+windows-sys = { version = "0.60", features = [
+  "Win32_Foundation",
+  "Win32_System_LibraryLoader",
+  "Win32_System_Registry",
+  "Win32_System_Threading",
+] }
+
+[target.'cfg(any(target_os = "macos", windows))'.dependencies]
+cpal = "0.18"
+symphonia = { version = "0.5.5", default-features = false, features = ["aac", "isomp4", "mkv", "mp3", "wav", "pcm", "flac", "ogg", "vorbis", "alac", "adpcm"] }
+# Opus, the audio of most WebM/MKV videos: symphonia has no decoder for it.
+opus-decoder = "0.1.1"
+bzip2 = "0.6"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSObject", "NSString"] }
+block2 = "0.6"
+core-foundation = "0.10"
+
+[profile.release]
+lto = false
+strip = "symbols"

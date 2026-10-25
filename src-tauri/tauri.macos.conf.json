@@ -1,0 +1,28 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "AIMeetings",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 880,
+        "minHeight": 600,
+        "center": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": {
+          "x": 18,
+          "y": 22
+        }
+      }
+    ]
+  },
+  "bundle": {
+    "macOS": {
+      "signingIdentity": "-",
+      "entitlements": "Entitlements.plist",
+      "minimumSystemVersion": "13.0"
+    }
+  }
+}
