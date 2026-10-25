@@ -4,12 +4,27 @@ fn main() {
     // On Windows the application manifest is the linker's job, not the resource file's — see
     // `app_manifest` for why the default would leave every test binary unable to start.
     let windows = WindowsAttributes::new_without_app_manifest();
+    resource_dirs();
     if let Err(error) = tauri_build::try_build(Attributes::new().windows_attributes(windows)) {
         panic!("failed to run tauri-build: {error:#}");
     }
     app_manifest();
     main_thread_stack();
     quiet_eh_frame_warning();
+}
+
+/// Makes sure the bundled-resource folders exist, empty if need be.
+///
+/// `tauri.conf.json` bundles `resources/llama/` (and on Windows `resources/vcrt/`), and tauri-build
+/// refuses to run when a listed path is missing. Their contents are fetched, not committed —
+/// `pnpm llama:runtime` and `scripts/copy-vc-runtime.ps1`, which the release workflow runs before
+/// packaging — so a fresh clone, and CI's test and build jobs, have neither. Empty, the app builds
+/// and runs; it just reports the local model's engine as not installed.
+fn resource_dirs() {
+    let root = std::path::PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR is set for build scripts"));
+    for dir in ["resources/llama", "resources/vcrt"] {
+        std::fs::create_dir_all(root.join(dir)).expect("the resource folder can be created");
+    }
 }
 
 /// Keeps the Apple linker's "__eh_frame section too large" note out of every dev build's output.
