@@ -1,49 +1,90 @@
+<div align="center">
+
 # AIMeetings
 
-Graba clases, llamadas y reuniones; obtén la transcripción con **quién dijo qué** y deja que la IA
-escriba resúmenes, apuntes de estudio, conceptos clave, preguntas de repaso o actas. La
-transcripción ocurre **en tu equipo**.
+### Tus reuniones y clases, escritas solas. Con quién dijo qué.
 
-Plataformas: **macOS (Apple Silicon)**, **Windows x64** y **Windows ARM64**.
+Graba, transcribe y resume en tu propio computador.
+Sin bots que se unen a la llamada y sin subir tu audio a ninguna parte.
 
-## Qué hace
+[**Descargar para Mac**](https://github.com/sorodriguezz/AIMeetings/releases/latest) ·
+[**Descargar para Windows**](https://github.com/sorodriguezz/AIMeetings/releases/latest)
 
-- **Grabar**: llamada (micrófono + audio del equipo: Teams, Meet, Zoom…) o presencial (micrófono),
-  con texto en vivo, pausa y detección automática de llamadas.
-- **Transcribir en local**: Whisper (whisper.cpp) o Parakeet/Canary (sherpa-onnx), o un Whisper en
-  la nube compatible con OpenAI si lo prefieres.
-- **Saber quién habla**: separación de hablantes (CAM++ + pyannote) y voces guardadas que se
-  reconocen en las siguientes grabaciones.
-- **Resumir con IA**: con una herramienta CLI que ya tengas (Claude Code, Codex, Gemini, OpenCode,
-  Cline, Grok), con **cualquier CLI propio** (plantillas para Ollama, llm, aichat) o con un **modelo
-  local** (llama.cpp integrado, Ollama o servidor compatible con OpenAI). Las grabaciones o
-  carpetas marcadas como privadas siempre usan el modelo local.
-- **Biblioteca**: carpetas, búsqueda en títulos, notas y transcripciones, notas propias en Markdown
-  por grabación, exportar transcripción (md/txt/srt) y audio.
-- **IA y modelos**: cada modelo muestra lo que ocupa, la RAM/VRAM que necesita, la velocidad
-  estimada (o medida) en tu equipo y cuál se recomienda para tu máquina.
-- **Actualizaciones** desde la propia app (firmadas).
+<br />
 
-## Desarrollo
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png" />
+  <img src="docs/screenshot-light.png" alt="AIMeetings mostrando la transcripción de una reunión, con cada frase marcada con el nombre de quien habló" width="900" />
+</picture>
 
-```bash
-pnpm install
-pnpm tauri dev
-```
+</div>
 
-Tests: `pnpm test` y `cd src-tauri && cargo test --lib`.
+<br />
 
-Los motores (whisper.cpp, sherpa-onnx) y los modelos se descargan desde la app, verificados por
-SHA-256. `llama-server` se empaqueta con `pnpm llama:runtime`.
+## Concéntrate en la conversación, no en tomar apuntes
 
-## Publicar una versión
+Pulsa **Grabar** y olvídate. Al terminar tendrás toda la conversación escrita, ordenada por
+persona y lista para buscar, copiar o compartir.
 
-1. Una vez: crea el repositorio `sorodriguezz/AIMeetings` en GitHub y añade el secreto
-   `TAURI_SIGNING_PRIVATE_KEY` con el contenido de `~/.tauri/aimeetings.key` (la clave no tiene
-   contraseña; deja `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` vacío). Sin esa clave las apps instaladas
-   no podrán actualizarse.
-2. `python3 scripts/bump_version.py 0.2.0`
-3. `git commit -am "Release v0.2.0" && git tag v0.2.0 && git push --follow-tags`
+## Lo que puedes hacer
 
-El workflow `release` construye los tres instaladores en un borrador, reconstruye `latest.json` y
-publica la versión; las apps instaladas la detectan solas.
+🎙️ **Grabar cualquier llamada**
+Teams, Meet, Zoom, WhatsApp… Captura tu voz y la de los demás a la vez. También sirve para
+reuniones en persona y clases.
+
+👥 **Saber quién dijo qué**
+AIMeetings separa las voces por sí solo. Ponle nombre a cada persona una vez y la reconocerá en
+tus próximas grabaciones.
+
+✨ **Resúmenes en un clic**
+Pide un resumen, un acta con los acuerdos, apuntes de estudio, conceptos clave o preguntas de
+repaso. Usa la IA que ya tienes o una que funciona dentro de tu computador.
+
+🎬 **¿Tienes un video de la reunión?**
+Súbelo tal cual. AIMeetings saca el audio y lo transcribe. También puedes convertir videos a audio
+liviano para guardarlos o compartirlos.
+
+🔒 **Privado de verdad**
+La transcripción se hace en tu equipo. Marca una grabación o carpeta como privada y nada saldrá de
+tu computador, ni siquiera para resumirla.
+
+📁 **Todo en orden**
+Carpetas, búsqueda en todo lo que se dijo, tus propias notas en cada grabación y exportación a
+texto o subtítulos.
+
+## Empezar en tres pasos
+
+1. **Descarga** AIMeetings para tu sistema.
+2. **Ábrela** y deja que te recomiende los modelos que mejor funcionan en tu equipo.
+3. **Pulsa Grabar.** Eso es todo.
+
+## Descargar
+
+| Tu equipo | Archivo |
+|---|---|
+| Mac con Apple Silicon (M1, M2, M3, M4…) | `AIMeetings_x.y.z_aarch64.dmg` |
+| Windows (la mayoría de los PC) | `AIMeetings_x.y.z_x64-setup.exe` |
+| Windows con procesador ARM (Snapdragon) | `AIMeetings_x.y.z_arm64-setup.exe` |
+
+Todos están en la [página de descargas](https://github.com/sorodriguezz/AIMeetings/releases/latest).
+La app se actualiza sola cuando hay una versión nueva.
+
+<details>
+<summary><b>¿El sistema no te deja abrirla?</b></summary>
+
+<br />
+
+- **Mac**: si dice que no puede verificar al desarrollador, haz clic derecho sobre AIMeetings en
+  Aplicaciones y elige **Abrir**. Solo hay que hacerlo la primera vez.
+- **Windows**: si aparece "Windows protegió su PC", pulsa **Más información** y luego
+  **Ejecutar de todas formas**.
+
+</details>
+
+<br />
+
+<div align="center">
+
+Hecho para quienes prefieren escuchar antes que escribir.
+
+</div>
