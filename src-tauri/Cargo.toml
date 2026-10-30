@@ -1,6 +1,6 @@
 [package]
 name = "aimeetings"
-version = "0.1.0"
+version = "0.1.1"
 description = "AIMeetings — record, transcribe and analyze meetings on your own computer"
 authors = ["sorodriguezz"]
 edition = "2021"

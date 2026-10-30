@@ -6,3 +6,7 @@ src-tauri/resources/llama
 src-tauri/resources/vcrt
 *.tsbuildinfo
 .DS_Store
+
+# Python release tooling
+__pycache__/
+*.pyc

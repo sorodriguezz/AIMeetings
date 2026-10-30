@@ -10,6 +10,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  release-metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/bump_version.py --check
+      - run: python3 -m unittest discover -s scripts -p test_release.py -v
+
   test:
     strategy:
       fail-fast: false

@@ -1,23 +1,52 @@
 name: release
 
-# Push a tag like v0.2.0 (see scripts/bump_version.py) to build, sign and publish.
+# Push a new version to main: validate, create its tag, build, sign and publish.
 # The release starts as a draft; each platform uploads its installer and updater
 # bundle to it. Only when all three are in is latest.json rebuilt and the release
 # published, so releases/latest/download/latest.json (what the app's updater
 # reads) never points at a release missing the user's system.
 on:
   push:
+    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 
 permissions:
   contents: write
 
+# One publication at a time; never cancel an installer build in progress.
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      sha: ${{ steps.version.outputs.sha }}
+      publish: ${{ steps.version.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Test release automation
+        run: python3 -m unittest discover -s scripts -p test_release.py -v
+      - name: Validate version and create its tag
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPDATER_SIGNING_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: python3 scripts/prepare_release.py
+
   test:
+    needs: prepare
+    if: needs.prepare.outputs.publish == 'true'
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -33,18 +62,26 @@ jobs:
         run: cargo test --lib
 
   create-release:
-    needs: test
+    needs: [prepare, test]
     runs-on: ubuntu-latest
     outputs:
       id: ${{ steps.draft.outputs.id }}
+      tag: ${{ needs.prepare.outputs.tag }}
+      sha: ${{ needs.prepare.outputs.sha }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      TAG: ${{ github.ref_name }}
+      TAG: ${{ needs.prepare.outputs.tag }}
     steps:
       # The id comes straight from the create call; listing releases right after
       # creating one can miss it, which silently disabled every upload.
       - id: draft
         run: |
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+            --jq '.[] | select(.tag_name == env.TAG) | .id')
+          if [ -n "$existing" ]; then
+            echo "id=$existing" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           id=$(gh api "repos/$GITHUB_REPOSITORY/releases" -f tag_name="$TAG" -f name="AIMeetings $TAG" \
             -F draft=true -f body="Descarga el instalador para tu sistema. Si ya tienes AIMeetings, se actualizará solo desde la app." \
             --jq .id)
@@ -68,6 +105,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-release.outputs.sha }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -103,15 +142,21 @@ jobs:
           releaseId: ${{ needs.create-release.outputs.id }}
           includeUpdaterJson: true
 
+      - name: Verify macOS app signature before publishing the release
+        if: runner.os == 'macOS'
+        run: codesign --verify --deep --strict --verbose=2 "src-tauri/target/${{ matrix.target }}/release/bundle/macos/AIMeetings.app"
+
   publish-release:
     needs: [create-release, publish]
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      TAG: ${{ github.ref_name }}
+      TAG: ${{ needs.create-release.outputs.tag }}
       ID: ${{ needs.create-release.outputs.id }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-release.outputs.sha }}
       # A draft can't be looked up by tag, so everything goes through its id.
       - name: Rebuild latest.json from the signed bundles
         run: |
